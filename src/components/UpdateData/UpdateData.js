@@ -87,26 +87,26 @@ const SmallButton = styled.button`
   margin-top: 10px;
 `;
 
-// Компонент для условного отображения статуса
+// Component for conditional status display
 const StatusText = styled.span`
   color: ${props => (props.positive ? 'green' : props.negative ? 'red' : 'black')};
   font-weight: bold;
 `;
 
-// --- Компонент UpdateData ---
+// --- Component UpdateData ---
 const UpdateData = () => {
-  // Общие данные: фактические показатели
+  // General data: actual order numbers
   const [pickedActual, setPickedActual] = useState(0);
   const [packedActual, setPackedActual] = useState(0);
-  // Настройки и результаты расчётов
+  // Settings and calculation results
   const [settings, setSettings] = useState(null);
   const [deviations, setDeviations] = useState({});
   const [recommendations, setRecommendations] = useState({});
-  // Данные контрольных точек
+  // Control points data
   const [cpData, setCpData] = useState([]);
   const initialRender = useRef(true);
 
-  // Загрузка updateData из localStorage
+  // Load updateData from localStorage
   useEffect(() => {
     const savedUpdateData = localStorage.getItem('updateData');
     if (savedUpdateData) {
@@ -119,7 +119,7 @@ const UpdateData = () => {
     }
   }, []);
 
-  // Автосохранение updateData
+  // Auto-save updateData
   useEffect(() => {
     if (initialRender.current) {
       initialRender.current = false;
@@ -129,7 +129,7 @@ const UpdateData = () => {
     localStorage.setItem('updateData', JSON.stringify(dataToSave));
   }, [pickedActual, packedActual, cpData]);
 
-  // Загрузка настроек
+  // Load settings from localStorage
   useEffect(() => {
     const storedSettings = localStorage.getItem('settings');
     if (storedSettings) {
@@ -137,7 +137,7 @@ const UpdateData = () => {
     }
   }, []);
 
-  // Инициализация cpData, если данных нет
+  // Initialize cpData if not available
   useEffect(() => {
     const savedUpdateData = localStorage.getItem('updateData');
     const parsedData = savedUpdateData ? JSON.parse(savedUpdateData) : {};
@@ -154,7 +154,7 @@ const UpdateData = () => {
     }
   }, [settings]);
 
-  // Пересчёт общих результатов и рекомендаций
+  // Recalculate overall results and recommendations
   const recalc = useCallback(() => {
     if (settings) {
       const calcDev = calculateDeviations(settings, pickedActual, packedActual);
@@ -170,35 +170,36 @@ const UpdateData = () => {
     return () => clearInterval(timer);
   }, [recalc]);
 
-  // --- Дополнительные вычисления для всего дня ---
+  // --- Calculations for the day ---
   const actualSpeedPicking = deviations.hoursPassed > 0 ? pickedActual / deviations.hoursPassed : 0;
   const actualSpeedPacking = deviations.hoursPassed > 0 ? packedActual / deviations.hoursPassed : 0;
   const requiredSpeed = deviations.requiredSpeed || 0;
   const recommendedPeoplePicking = settings ? requiredSpeed / Number(settings.avgPickingSpeed) : 0;
   const recommendedPeoplePacking = settings ? requiredSpeed / Number(settings.avgPackingSpeed) : 0;
 
-  // --- Вычисления для показателей последнего часа ---
-  // Оставшиеся часы работы: totalWorkTime - hoursWorked
+  // --- Calculations for last hour indicators ---
+  // Remaining hours: totalWorkTime - hoursWorked
   const remainingHours = deviations.totalWorkTime ? (deviations.totalWorkTime - deviations.hoursPassed) : 0;
-  // Общий оставшийся объём заказов на весь оставшийся период
+  // Total remaining orders for the remaining period
   const remainingOrdersPicking_total = settings ? Number(settings.expectedOrders) - pickedActual : 0;
   const remainingOrdersPacking_total = settings ? Number(settings.expectedOrders) - packedActual : 0;
-  // Требуемая скорость для последнего часа (orders/hour)
+  // Required speed for the last hour (orders/hour)
   const requiredSpeedLastHourPicking = remainingHours > 0 ? remainingOrdersPicking_total / remainingHours : 0;
   const requiredSpeedLastHourPacking = remainingHours > 0 ? remainingOrdersPacking_total / remainingHours : 0;
-  // Округлённые значения для отображения
+  // Rounded values for display as "remaining orders for ... (last hour)"
   const remainingOrdersPicking_lastHour = Math.round(requiredSpeedLastHourPicking);
   const remainingOrdersPacking_lastHour = Math.round(requiredSpeedLastHourPacking);
-  // Новый расчёт по формуле:
-  // Total remaining unprocessed orders (last hour) = (staffForLastPeriod * avgPackingSpeed) - (Remaining orders for Picking (last hour) + Remaining orders for Packing (last hour))
+  // Calculate Total remaining unprocessed orders (last hour) using the formula:
+  // (staffForLastPeriod * avgPackingSpeed) - (Remaining orders for Picking (last hour) + Remaining orders for Packing (last hour))
   const staffLastHour = settings ? Number(settings.staffForLastPeriod) : 0;
   const avgPackingSpeed = settings ? Number(settings.avgPackingSpeed) : 0;
   const totalRemainingUnprocessedLastHour = settings 
     ? (staffLastHour * avgPackingSpeed) - (remainingOrdersPicking_lastHour + remainingOrdersPacking_lastHour)
     : 0;
 
-  // --- Вывод текстового сообщения для последнего часа ---
-  // Если totalRemainingUnprocessedLastHour >= 0, выводим только сообщение (зеленым), иначе - число и сообщение (красным)
+  // --- Display message for last hour ---
+  // If totalRemainingUnprocessedLastHour is >= 0, display only the message (in green);
+  // otherwise, display the absolute number along with the message (in red).
   const statusDisplay =
     totalRemainingUnprocessedLastHour >= 0 ? (
       <StatusText positive>Plan will be met on time</StatusText>
@@ -206,23 +207,23 @@ const UpdateData = () => {
       <StatusText negative>{Math.abs(totalRemainingUnprocessedLastHour)} orders – Plan will not be met on time</StatusText>
     );
 
-  // --- Дополнительное количество сотрудников для последнего часа ---
-  const additionalStaffPicking_lastHour =
-    settings && Number(settings.avgPickingSpeed) > 0 && requiredSpeedLastHourPicking > Number(settings.avgPickingSpeed)
-      ? (requiredSpeedLastHourPicking - Number(settings.avgPickingSpeed)) / Number(settings.avgPickingSpeed)
+  // --- Calculate staff needed for the last hour by dividing remaining orders by average speed ---
+  const staffNeededPicking_lastHour =
+    settings && Number(settings.avgPickingSpeed) > 0
+      ? remainingOrdersPicking_lastHour / Number(settings.avgPickingSpeed)
       : 0;
-  const additionalStaffPacking_lastHour =
-    settings && Number(settings.avgPackingSpeed) > 0 && requiredSpeedLastHourPacking > Number(settings.avgPackingSpeed)
-      ? (requiredSpeedLastHourPacking - Number(settings.avgPackingSpeed)) / Number(settings.avgPackingSpeed)
+  const staffNeededPacking_lastHour =
+    settings && Number(settings.avgPackingSpeed) > 0
+      ? remainingOrdersPacking_lastHour / Number(settings.avgPackingSpeed)
       : 0;
 
-  // --- Прогресс выполнения (Packing) ---
+  // --- Progress (Packing) ---
   const progressPercentage =
     settings && settings.expectedOrders
       ? Math.min((packedActual / Number(settings.expectedOrders)) * 100, 100)
       : 0;
 
-  // --- Функции обновления данных контрольных точек ---
+  // --- Functions to update control point data ---
   const updateCPField = (index, field, value) => {
     const newCPData = [...cpData];
     newCPData[index] = { ...newCPData[index], [field]: Number(value) };
@@ -241,7 +242,7 @@ const UpdateData = () => {
     setCpData(newCPData);
   };
 
-  // --- Кнопка сохранения ---
+  // --- Save Button ---
   const handleSaveAll = () => {
     const dataToSave = { pickedActual, packedActual, cpData };
     localStorage.setItem('updateData', JSON.stringify(dataToSave));
@@ -271,7 +272,7 @@ const UpdateData = () => {
             <div>
               <p>Hours worked: {deviations.hoursPassed ? deviations.hoursPassed.toFixed(2) : 0}</p>
               <p>
-                Expected number of processed orders by that time: {deviations.expectedProcessed ? deviations.expectedProcessed.toFixed(2) : 0}
+                Expected processed orders: {deviations.expectedProcessed ? deviations.expectedProcessed.toFixed(2) : 0}
               </p>
               <p>Required overall speed: {requiredSpeed.toFixed(2)} orders/hour</p>
               <p>Actual overall speed (Picking): {actualSpeedPicking.toFixed(2)} orders/hour</p>
@@ -290,8 +291,8 @@ const UpdateData = () => {
               <p>
                 Total remaining unprocessed orders (last hour): {statusDisplay}
               </p>
-              <p>Staff needed for Picking (last hour): {additionalStaffPicking_lastHour.toFixed(2)}</p>
-              <p>Staff needed for Packing (last hour): {additionalStaffPacking_lastHour.toFixed(2)}</p>
+              <p>Staff needed for Picking (last hour): {staffNeededPicking_lastHour.toFixed(2)}</p>
+              <p>Staff needed for Packing (last hour): {staffNeededPacking_lastHour.toFixed(2)}</p>
             </div>
           )}
 
