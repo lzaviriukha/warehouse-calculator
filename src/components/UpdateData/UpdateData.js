@@ -11,28 +11,25 @@ import {
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
 
-// --- Styled Components ---
+// Styled Components
 const FormContainer = styled.div`
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
   margin-top: 20px;
 `;
-
 const FormField = styled.div`
   flex: 1;
   min-width: 280px;
   display: flex;
   flex-direction: column;
 `;
-
 const Label = styled.label`
   font-size: 14px;
   margin-bottom: 8px;
   font-weight: 500;
   color: #555;
 `;
-
 const ResultsContainer = styled.div`
   margin-top: 30px;
   padding: 20px;
@@ -40,13 +37,11 @@ const ResultsContainer = styled.div`
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 `;
-
 const SectionTitle = styled.h3`
   margin-top: 20px;
   margin-bottom: 10px;
   color: #007aff;
 `;
-
 const ProgressBarContainer = styled.div`
   background: #e0e0e0;
   border-radius: 10px;
@@ -54,24 +49,20 @@ const ProgressBarContainer = styled.div`
   margin-top: 20px;
   height: 20px;
 `;
-
 const ProgressBar = styled(motion.div)`
   background: linear-gradient(90deg, #007aff, #0051a8);
   height: 100%;
   width: ${props => props.width}%;
 `;
-
 const ControlPointContainer = styled.div`
   margin-top: 30px;
 `;
-
 const CPBlock = styled.div`
   margin-bottom: 15px;
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 8px;
 `;
-
 const SmallButton = styled.button`
   padding: 6px 12px;
   background: #f0f0f0;
@@ -86,40 +77,35 @@ const SmallButton = styled.button`
   }
   margin-top: 10px;
 `;
-
-// Компонент для условного отображения статуса
 const StatusText = styled.span`
   color: ${props => (props.positive ? 'green' : props.negative ? 'red' : 'black')};
   font-weight: bold;
 `;
 
-// --- Компонент UpdateData ---
 const UpdateData = () => {
-  // Общие данные: фактические показатели
+  // Actual processed orders
   const [pickedActual, setPickedActual] = useState(0);
   const [packedActual, setPackedActual] = useState(0);
-  // Настройки и результаты расчётов
+  // Settings and computed values
   const [settings, setSettings] = useState(null);
   const [deviations, setDeviations] = useState({});
   const [recommendations, setRecommendations] = useState({});
-  // Данные контрольных точек
+  // Control points
   const [cpData, setCpData] = useState([]);
   const initialRender = useRef(true);
 
-  // Загрузка updateData из localStorage
+  // Load updateData from localStorage
   useEffect(() => {
-    const savedUpdateData = localStorage.getItem('updateData');
-    if (savedUpdateData) {
-      const parsed = JSON.parse(savedUpdateData);
+    const savedData = localStorage.getItem('updateData');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
       setPickedActual(parsed.pickedActual);
       setPackedActual(parsed.packedActual);
-      if (parsed.cpData) {
-        setCpData(parsed.cpData);
-      }
+      if (parsed.cpData) setCpData(parsed.cpData);
     }
   }, []);
 
-  // Автосохранение updateData
+  // Auto-save updateData
   useEffect(() => {
     if (initialRender.current) {
       initialRender.current = false;
@@ -129,7 +115,7 @@ const UpdateData = () => {
     localStorage.setItem('updateData', JSON.stringify(dataToSave));
   }, [pickedActual, packedActual, cpData]);
 
-  // Загрузка настроек
+  // Load settings from localStorage
   useEffect(() => {
     const storedSettings = localStorage.getItem('settings');
     if (storedSettings) {
@@ -137,30 +123,33 @@ const UpdateData = () => {
     }
   }, []);
 
-  // Инициализация cpData, если данных нет
+  // Initialize control points if not set
   useEffect(() => {
-    const savedUpdateData = localStorage.getItem('updateData');
-    const parsedData = savedUpdateData ? JSON.parse(savedUpdateData) : {};
-    if ((!parsedData.cpData || parsedData.cpData.length === 0) &&
+    const savedData = localStorage.getItem('updateData');
+    const parsed = savedData ? JSON.parse(savedData) : {};
+    if ((!parsed.cpData || parsed.cpData.length === 0) &&
         settings && settings.controlPoints && settings.controlPoints.length > 0) {
-      const initialCPData = settings.controlPoints.map(cp => ({
-        time: cp.time,
-        plannedPacked: calculateExpectedAtTime(settings, cp.time),
-        actualPacked: 0,
-        plannedPicked: calculateExpectedAtTime(settings, cp.time),
-        actualPicked: 0,
-      }));
-      setCpData(initialCPData);
+      const initialCP = settings.controlPoints.map(cp => {
+        const exp = calculateExpectedAtTime(settings, cp.time);
+        return {
+          time: cp.time,
+          plannedPicking: exp.expectedPicking,
+          plannedPacking: exp.expectedPacking,
+          actualPicked: 0,
+          actualPacked: 0,
+        };
+      });
+      setCpData(initialCP);
     }
   }, [settings]);
 
-  // Пересчёт общих результатов и рекомендаций
+  // Recalculate deviations and recommendations periodically
   const recalc = useCallback(() => {
     if (settings) {
-      const calcDev = calculateDeviations(settings, pickedActual, packedActual);
-      setDeviations(calcDev);
-      const calcRec = calculateRecommendations(calcDev, settings);
-      setRecommendations(calcRec);
+      const dev = calculateDeviations(settings, pickedActual, packedActual);
+      setDeviations(dev);
+      const rec = calculateRecommendations(dev, settings);
+      setRecommendations(rec);
     }
   }, [settings, pickedActual, packedActual]);
 
@@ -170,46 +159,48 @@ const UpdateData = () => {
     return () => clearInterval(timer);
   }, [recalc]);
 
-  // --- Дополнительные вычисления для всего дня ---
-  const actualSpeedPicking = deviations.hoursPassed > 0 ? pickedActual / deviations.hoursPassed : 0;
-  const actualSpeedPacking = deviations.hoursPassed > 0 ? packedActual / deviations.hoursPassed : 0;
-  const requiredSpeed = deviations.requiredSpeed || 0;
-  const recommendedPeoplePicking = settings ? requiredSpeed / Number(settings.avgPickingSpeed) : 0;
-  const recommendedPeoplePacking = settings ? requiredSpeed / Number(settings.avgPackingSpeed) : 0;
+  // Main Indicators:
+  // Actual overall speeds = (actual orders / hoursWorked) * 2
+  const actualSpeedPicking = deviations.hoursPassed > 0 ? (pickedActual / deviations.hoursPassed) * 2 : 0;
+  const actualSpeedPacking = deviations.hoursPassed > 0 ? (packedActual / deviations.hoursPassed) * 2 : 0;
+  
+  // Recommended staff = required speed / avgSpeed (for each process)
+  const avgSpeed = settings ? Number(settings.avgSpeed) : 0;
+  const recommendedPeoplePicking = settings && deviations.requiredSpeedPicking ? (deviations.requiredSpeedPicking / (avgSpeed * 2)) : 0;
+  const recommendedPeoplePacking = settings && deviations.requiredSpeedPacking ? (deviations.requiredSpeedPacking / (avgSpeed * 2)) : 0;
+  
+  // Last Hour Indicators:
+  // Теперь оставшиеся заказы рассчитываются как абсолютное значение отклонений
+  const remainingForPicking = settings ? Math.abs(deviations.pickingDeviation || 0) : 0;
+  const remainingForPacking = settings ? Math.abs(deviations.packingDeviation || 0) : 0;
+  
+  // Общее оставшееся количество заказов (среднее значение):
+  const totalRemaining = (remainingForPicking + remainingForPacking) / 2;
+  
+  // Вместимость последних часов для обоих процессов:
+  const capacity = settings ? Number(settings.staffForLastPeriod) * avgSpeed : 0;
+  
+  // Формируем сообщение для Total remaining unprocessed orders (last hour)
+  let totalRemainingMessage = "";
+  if (totalRemaining > capacity) {
+    totalRemainingMessage = `${Math.round(totalRemaining - capacity)} orders will remain unprocessed – Plan will not be met on time`;
+  } else if (totalRemaining === capacity) {
+    totalRemainingMessage = "Plan will be met on time";
+  } else {
+    totalRemainingMessage = "Plan will be met on time";
+  }
+  
+  // Staff needed для каждого процесса = (remaining orders for process) / avgSpeed
+  const staffNeededPicking_lastHour = avgSpeed > 0 ? remainingForPicking / (avgSpeed * 2) : 0;
+  const staffNeededPacking_lastHour = avgSpeed > 0 ? remainingForPacking / (avgSpeed * 2) : 0;
 
-  // --- Вычисления для показателей последнего часа ---
-  // Оставшиеся часы работы: totalWorkTime - hoursWorked
-  const remainingHours = deviations.totalWorkTime ? (deviations.totalWorkTime - deviations.hoursPassed) : 0;
-  // Общий оставшийся объём заказов для Picking и Packing (предполагаем, что ожидаемое количество заказов распределяется поровну между Picking и Packing)
-  // Здесь можно использовать разные подходы, но для примера:
-  const remainingOrdersPicking_total = settings ? Number(settings.expectedOrders) - pickedActual : 0;
-  const remainingOrdersPacking_total = settings ? Number(settings.expectedOrders) - packedActual : 0;
-  
-  // Для последнего часа, если за весь оставшийся период (remainingHours) заказы распределяются равномерно,
-  // то ожидаемая норма за последний час (Remaining orders for ... (last hour)) будет:
-  const requiredSpeedLastHourPicking = remainingHours > 0 ? remainingOrdersPicking_total / remainingHours : 0;
-  const requiredSpeedLastHourPacking = remainingHours > 0 ? remainingOrdersPacking_total / remainingHours : 0;
-  
-  // Теперь, согласно вашей логике:
-  // Staff needed for X (last hour) = (Remaining orders for X (last hour)) / (Average X Speed)
-  const staffNeededPicking_lastHour = settings && Number(settings.avgPickingSpeed) > 0 
-    ? requiredSpeedLastHourPicking / Number(settings.avgPickingSpeed) 
-    : 0;
-  const staffNeededPacking_lastHour = settings && Number(settings.avgPackingSpeed) > 0 
-    ? requiredSpeedLastHourPacking / Number(settings.avgPackingSpeed) 
-    : 0;
-  
-  // Округлённые значения для отображения, если требуется:
-  const remainingOrdersPicking_lastHour = Math.round(requiredSpeedLastHourPicking);
-  const remainingOrdersPacking_lastHour = Math.round(requiredSpeedLastHourPacking);
-  
-  // --- Прогресс ---
+  // Progress for Packing:
   const progressPercentage =
     settings && settings.expectedOrders
       ? Math.min((packedActual / Number(settings.expectedOrders)) * 100, 100)
       : 0;
 
-  // --- Функции обновления данных контрольных точек ---
+  // Functions для обновления данных контрольных точек.
   const updateCPField = (index, field, value) => {
     const newCPData = [...cpData];
     newCPData[index] = { ...newCPData[index], [field]: Number(value) };
@@ -218,17 +209,17 @@ const UpdateData = () => {
 
   const updateCPTime = (index, value) => {
     const newCPData = [...cpData];
+    const exp = calculateExpectedAtTime(settings, value);
     newCPData[index] = {
       time: value,
-      actualPacked: cpData[index]?.actualPacked || 0,
+      plannedPicking: exp.expectedPicking,
+      plannedPacking: exp.expectedPacking,
       actualPicked: cpData[index]?.actualPicked || 0,
-      plannedPacked: settings && value ? calculateExpectedAtTime(settings, value) : 0,
-      plannedPicked: settings && value ? calculateExpectedAtTime(settings, value) : 0,
+      actualPacked: cpData[index]?.actualPacked || 0,
     };
     setCpData(newCPData);
   };
 
-  // --- Кнопка сохранения ---
   const handleSaveAll = () => {
     const dataToSave = { pickedActual, packedActual, cpData };
     localStorage.setItem('updateData', JSON.stringify(dataToSave));
@@ -239,7 +230,7 @@ const UpdateData = () => {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <Container>
         <h1>🔄 Update Process Data</h1>
-        {/* Block 1: General Data */}
+        {/* General Data Inputs */}
         <FormContainer>
           <FormField>
             <Label>Actual number of orders picked:</Label>
@@ -250,53 +241,56 @@ const UpdateData = () => {
             <Input type="number" value={packedActual} onChange={(e) => setPackedActual(Number(e.target.value))} />
           </FormField>
         </FormContainer>
-
         <ResultsContainer>
-          {/* Block 2: Main Indicators */}
+          {/* Main Indicators */}
           <SectionTitle>Main Indicators</SectionTitle>
           {settings && (
             <div>
               <p>Hours worked: {deviations.hoursPassed ? deviations.hoursPassed.toFixed(2) : 0}</p>
               <p>
-                Expected number of processed orders by that time: {deviations.expectedProcessed ? deviations.expectedProcessed.toFixed(2) : 0}
+                Expected number of processed orders by that time (Picking): {deviations.expectedProcessedPicking ? deviations.expectedProcessedPicking.toFixed(2) : 0}
               </p>
-              <p>Required overall speed: {requiredSpeed.toFixed(2)} orders/hour</p>
+              <p>Required overall speed (Picking): {deviations.requiredSpeedPicking ? deviations.requiredSpeedPicking.toFixed(2) : 0} orders/hour</p>
               <p>Actual overall speed (Picking): {actualSpeedPicking.toFixed(2)} orders/hour</p>
-              <p>Actual overall speed (Packing): {actualSpeedPacking.toFixed(2)} orders/hour</p>
               <p>Recommended staff for Picking today: {recommendedPeoplePicking.toFixed(2)}</p>
+              <hr />
+              <p>
+                Expected number of processed orders by that time (Packing): {deviations.expectedProcessedPacking ? deviations.expectedProcessedPacking.toFixed(2) : 0}
+              </p>
+              <p>Required overall speed (Packing): {deviations.requiredSpeedPacking ? deviations.requiredSpeedPacking.toFixed(2) : 0} orders/hour</p>
+              <p>Actual overall speed (Packing): {actualSpeedPacking.toFixed(2)} orders/hour</p>
               <p>Recommended staff for Packing today: {recommendedPeoplePacking.toFixed(2)}</p>
             </div>
           )}
-
-          {/* Block 3: Last Hour Indicators */}
+          {/* Last Hour Indicators */}
           <SectionTitle>Last Hour Indicators</SectionTitle>
-          {settings && remainingHours > 0 && (
+          {settings && (
             <div>
-              <p>Remaining orders for Picking (last hour): {remainingOrdersPicking_lastHour} orders</p>
-              <p>Remaining orders for Packing (last hour): {remainingOrdersPacking_lastHour} orders</p>
+              <p>Remaining orders for Picking (last hour): {Math.round(remainingForPicking)} orders</p>
+              <p>Remaining orders for Packing (last hour): {Math.round(remainingForPacking)} orders</p>
               <p>
-                Total remaining unprocessed orders (last hour): {/* Можно вывести статус */}
-                { (remainingOrdersPicking_lastHour + remainingOrdersPacking_lastHour) > 0 ? 
-                  <StatusText negative>{(remainingOrdersPicking_lastHour + remainingOrdersPacking_lastHour)} orders – Plan will not be met on time</StatusText>
-                  : <StatusText positive>Plan will be met on time</StatusText> }
+                Total remaining unprocessed orders (last hour):{" "}
+                {totalRemaining > capacity ? (
+                  <StatusText negative>{totalRemainingMessage}</StatusText>
+                ) : (
+                  <StatusText positive>{totalRemainingMessage}</StatusText>
+                )}
               </p>
               <p>Staff needed for Picking (last hour): {staffNeededPicking_lastHour.toFixed(2)}</p>
               <p>Staff needed for Packing (last hour): {staffNeededPacking_lastHour.toFixed(2)}</p>
             </div>
           )}
-
-          {/* Block 4: Deviations and Recommendations */}
+          {/* Deviations and Recommendations */}
           <SectionTitle>Deviations and Recommendations</SectionTitle>
           <div>
-            <p>Deviation (Packing): {deviations.packingDeviation ? deviations.packingDeviation.toFixed(2) : 0}</p>
             <p>Deviation (Picking): {deviations.pickingDeviation ? deviations.pickingDeviation.toFixed(2) : 0}</p>
+            <p>Deviation (Packing): {deviations.packingDeviation ? deviations.packingDeviation.toFixed(2) : 0}</p>
           </div>
           <div style={{ marginTop: '20px' }}>
-            <p>{recommendations.packing}</p>
             <p>{recommendations.picking}</p>
+            <p>{recommendations.packing}</p>
           </div>
-
-          {/* Block 5: Progress */}
+          {/* Progress */}
           <SectionTitle>Progress</SectionTitle>
           <div>
             <p style={{ fontWeight: '500', marginBottom: '8px' }}>
@@ -312,8 +306,7 @@ const UpdateData = () => {
             </ProgressBarContainer>
           </div>
         </ResultsContainer>
-
-        {/* Block 6: Control Points */}
+        {/* Control Points */}
         {settings && settings.controlPoints && settings.controlPoints.length > 0 && (
           <ControlPointContainer>
             <SectionTitle>Control Points</SectionTitle>
@@ -324,29 +317,31 @@ const UpdateData = () => {
                 return (
                   <CPBlock key={index}>
                     <p>
-                      <strong>Control Point Time:</strong>{' '}
-                      <Input type="time" value={cp.time} onChange={(e) => updateCPTime(index, e.target.value)} style={{ maxWidth: '100px' }} />
+                      <strong>Control Point Time:</strong>{" "}
+                      <Input type="time" value={cp.time} onChange={(e) => updateCPTime(index, e.target.value)} style={{ maxWidth: "100px" }} />
                     </p>
                     <p>
-                      <strong>Planned (Packing):</strong> {expectedAtCP.toFixed(0)} | <strong>Actual (Packing):</strong>{' '}
-                      <Input type="number" value={cp.actualPacked} onChange={(e) => updateCPField(index, 'actualPacked', e.target.value)} style={{ width: '80px' }} />
+                      <strong>Planned (Picking):</strong> {expectedAtCP.expectedPicking.toFixed(0)} | <strong>Actual (Picking):</strong>{" "}
+                      <Input type="number" value={cp.actualPicked} onChange={(e) => updateCPField(index, "actualPicked", e.target.value)} style={{ width: "80px" }} />
                     </p>
                     <p>
-                      <strong>Planned (Picking):</strong> {expectedAtCP.toFixed(0)} | <strong>Actual (Picking):</strong>{' '}
-                      <Input type="number" value={cp.actualPicked} onChange={(e) => updateCPField(index, 'actualPicked', e.target.value)} style={{ width: '80px' }} />
+                      <strong>Planned (Packing):</strong> {expectedAtCP.expectedPacking.toFixed(0)} | <strong>Actual (Packing):</strong>{" "}
+                      <Input type="number" value={cp.actualPacked} onChange={(e) => updateCPField(index, "actualPacked", e.target.value)} style={{ width: "80px" }} />
                     </p>
                     <div>
                       <p>
-                        <strong>Deviation (Packing):</strong> {(cp.actualPacked - expectedAtCP).toFixed(2)}
+                        <strong>Deviation (Picking):</strong> {(cp.actualPicked - expectedAtCP.expectedPicking).toFixed(2)}
                       </p>
                       <p>
-                        <strong>Deviation (Picking):</strong> {(cp.actualPicked - expectedAtCP).toFixed(2)}
+                        <strong>Deviation (Packing):</strong> {(cp.actualPacked - expectedAtCP.expectedPacking).toFixed(2)}
                       </p>
                     </div>
-                    <SmallButton onClick={() => {
-                      const newCP = cpData.filter((_, i) => i !== index);
-                      setCpData(newCP);
-                    }}>
+                    <SmallButton
+                      onClick={() => {
+                        const newCP = cpData.filter((_, i) => i !== index);
+                        setCpData(newCP);
+                      }}
+                    >
                       Delete Control Point
                     </SmallButton>
                   </CPBlock>
@@ -357,9 +352,8 @@ const UpdateData = () => {
             )}
           </ControlPointContainer>
         )}
-
-        {/* Block 7: Save Button */}
-        <div style={{ marginTop: '30px', textAlign: 'center' }}>
+        {/* Save Button */}
+        <div style={{ marginTop: "30px", textAlign: "center" }}>
           <Button onClick={handleSaveAll}>Save All Data</Button>
         </div>
       </Container>

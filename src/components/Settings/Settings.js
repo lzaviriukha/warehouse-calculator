@@ -48,12 +48,12 @@ const SmallButton = styled.button`
 const Settings = () => {
   const navigate = useNavigate();
 
-  // Main settings
+  // Main settings states
   const [shiftStart, setShiftStart] = useState('');
   const [shiftEnd, setShiftEnd] = useState('');
   const [expectedOrders, setExpectedOrders] = useState('');
-  const [avgPickingSpeed, setAvgPickingSpeed] = useState('');
-  const [avgPackingSpeed, setAvgPackingSpeed] = useState('');
+  // Одно поле для средней скорости (для обоих процессов)
+  const [avgSpeed, setAvgSpeed] = useState('');
   const [staffForLastPeriod, setStaffForLastPeriod] = useState('');
 
   // Arrays for breaks and control points
@@ -78,7 +78,7 @@ const Settings = () => {
           setBreaks(arr);
         }
       }
-      // Load control points — ensure each element has the format { time: "HH:MM" }
+      // Load control points (ensure each element has format { time: "HH:MM" })
       if (settings.controlPoints) {
         if (Array.isArray(settings.controlPoints)) {
           const validCP = settings.controlPoints.map(cp =>
@@ -91,8 +91,8 @@ const Settings = () => {
         }
       }
       setExpectedOrders(settings.expectedOrders || '');
-      setAvgPickingSpeed(settings.avgPickingSpeed || '');
-      setAvgPackingSpeed(settings.avgPackingSpeed || '');
+      // Используем одно поле для средней скорости
+      setAvgSpeed(settings.avgSpeed || '');
       setStaffForLastPeriod(settings.staffForLastPeriod || '');
     }
   }, []);
@@ -101,7 +101,7 @@ const Settings = () => {
   const getLastHourInterval = () => {
     if (!shiftEnd) return '';
     const [endHour, endMinute] = shiftEnd.split(':').map(Number);
-    // Create a date object with shiftEnd and subtract 1 hour
+    // Create a date object with shiftEnd and subtract 1 hour.
     const endDate = new Date(0, 0, 0, endHour, endMinute);
     endDate.setHours(endDate.getHours() - 1);
     const pad = (n) => n.toString().padStart(2, '0');
@@ -118,8 +118,7 @@ const Settings = () => {
       breaks,           // array of objects { start, end }
       controlPoints,    // array of objects { time }
       expectedOrders,
-      avgPickingSpeed,
-      avgPackingSpeed,
+      avgSpeed,         // one field for average speed
       staffForLastPeriod,
     };
     localStorage.setItem('settings', JSON.stringify(settings));
@@ -208,12 +207,8 @@ const Settings = () => {
             <Input type="number" value={expectedOrders} onChange={(e) => setExpectedOrders(e.target.value)} />
           </FormField>
           <FormField>
-            <Label>Average Picking Speed (one worker per hour):</Label>
-            <Input type="number" value={avgPickingSpeed} onChange={(e) => setAvgPickingSpeed(e.target.value)} />
-          </FormField>
-          <FormField>
-            <Label>Average Packing Speed (one worker per hour):</Label>
-            <Input type="number" value={avgPackingSpeed} onChange={(e) => setAvgPackingSpeed(e.target.value)} />
+            <Label>Average Speed (one worker per hour):</Label>
+            <Input type="number" value={avgSpeed} onChange={(e) => setAvgSpeed(e.target.value)} />
           </FormField>
           <FormField>
             <Label>Number of staff in the last hour ({lastHourInterval}):</Label>
