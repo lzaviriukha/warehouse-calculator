@@ -182,7 +182,7 @@ export const calculateExpectedAtTime = (settings, controlTime) => {
   
   const effectiveHours = Math.max(rawHours - breakBefore, 0);
   
-  // Рассчитываем требуемую скорость для всей смены так же, как в calculateDeviations.
+  // Рассчитываем требуемую скорость для всей смены так же, как в calculateDeviations
   const { hours: endHour, minutes: endMinute } = parseTime(settings.shiftEnd);
   const shiftEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, endMinute);
   const totalShiftHours = (shiftEndDate - shiftStartDate) / (1000 * 60 * 60);
