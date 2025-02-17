@@ -50,7 +50,7 @@ const Analytics = () => {
     datasets: [
       {
         label: 'Planned Packing',
-        data: history.map(item => item.plannedPacking), // исправлено: plannedPacking, а не plannedPacked
+        data: history.map(item => item.plannedPacking), 
         borderColor: 'rgba(153,102,255,1)',
         backgroundColor: 'rgba(153,102,255,0.2)',
         fill: false,
@@ -66,7 +66,7 @@ const Analytics = () => {
       },
       {
         label: 'Planned Picking',
-        data: history.map(item => item.plannedPicking), // исправлено: plannedPicking, а не plannedPicked
+        data: history.map(item => item.plannedPicking),
         borderColor: 'rgba(255,159,64,1)',
         backgroundColor: 'rgba(255,159,64,0.2)',
         fill: false,

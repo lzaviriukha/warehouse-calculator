@@ -171,8 +171,9 @@ const UpdateData = () => {
   
   // Last Hour Indicators:
   // Теперь оставшиеся заказы рассчитываются как абсолютное значение отклонений
-  const remainingForPicking = settings ? Math.abs(deviations.pickingDeviation || 0) : 0;
-  const remainingForPacking = settings ? Math.abs(deviations.packingDeviation || 0) : 0;
+  const remainingForPicking = settings ? (deviations.pickingDeviation < 0 ? deviations.pickingDeviation : 0) : 0;
+  const remainingForPacking = settings ? (deviations.packingDeviation < 0 ? deviations.packingDeviation : 0) : 0;
+
   
   // Общее оставшееся количество заказов (среднее значение):
   const totalRemaining = (remainingForPicking + remainingForPacking) / 2;
@@ -182,15 +183,15 @@ const UpdateData = () => {
   
   // Формируем сообщение для Total remaining unprocessed orders (last hour)
   let totalRemainingMessage = "";
-  if (totalRemaining > capacity) {
-    totalRemainingMessage = `${Math.round(totalRemaining - capacity)} orders will remain unprocessed – Plan will not be met on time`;
-  } else if (totalRemaining === capacity) {
-    totalRemainingMessage = "Plan will be met on time";
+  if (totalRemaining < 0) {
+    totalRemainingMessage = `Plan will not be met on time 😧🏃👀`;
+  } else if (totalRemaining === 0) {
+    totalRemainingMessage = "Plan will be met on time 🙋😃🥇";
   } else {
-    totalRemainingMessage = "Plan will be met on time";
+    totalRemainingMessage = "Plan will be met on time 🙋😃🥇";
   }
   
-  // Staff needed для каждого процесса = (remaining orders for process) / avgSpeed
+  // Staff needed для каждого процесса = (remaining orders for process) / avgSpeed * 2
   const staffNeededPicking_lastHour = avgSpeed > 0 ? remainingForPicking / (avgSpeed * 2) : 0;
   const staffNeededPacking_lastHour = avgSpeed > 0 ? remainingForPacking / (avgSpeed * 2) : 0;
 
@@ -262,22 +263,22 @@ const UpdateData = () => {
               <p>Recommended staff for Packing today: {recommendedPeoplePacking.toFixed(2)}</p>
             </div>
           )}
-          {/* Last Hour Indicators */}
-          <SectionTitle>Last Hour Indicators</SectionTitle>
+          {/* Last Hour Backlog Indicators */}
+          <SectionTitle>Last Hour Backlog Indicators</SectionTitle>
           {settings && (
             <div>
-              <p>Remaining orders for Picking (last hour): {Math.round(remainingForPicking)} orders</p>
-              <p>Remaining orders for Packing (last hour): {Math.round(remainingForPacking)} orders</p>
+              <p>Expected Backlog – Picking: {Math.round(remainingForPicking)} orders</p>
+              <p>Expected Backlog – Packing: {Math.round(remainingForPacking)} orders</p>
               <p>
                 Total remaining unprocessed orders (last hour):{" "}
-                {totalRemaining > capacity ? (
+                {totalRemaining < 0 ? (
                   <StatusText negative>{totalRemainingMessage}</StatusText>
                 ) : (
                   <StatusText positive>{totalRemainingMessage}</StatusText>
                 )}
               </p>
-              <p>Staff needed for Picking (last hour): {staffNeededPicking_lastHour.toFixed(2)}</p>
-              <p>Staff needed for Packing (last hour): {staffNeededPacking_lastHour.toFixed(2)}</p>
+              <p>Additional Staff Required for Picking (last hour): {Math.abs(staffNeededPicking_lastHour).toFixed(2)}</p>
+              <p>Additional Staff Required for Packing (last hour): {Math.abs(staffNeededPacking_lastHour).toFixed(2)}</p>
             </div>
           )}
           {/* Deviations and Recommendations */}
